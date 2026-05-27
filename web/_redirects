@@ -1,0 +1,17 @@
+# Cloudflare Pages URL routing
+
+/comics/:slug          /comic.html            200
+/reader/:slug/:chapter /reader.html           200
+/ranking               /ranking.html          200
+/bookmarks             /bookmarks.html        200
+
+# API — Cloudflare Workers
+/api/*  https://manhwauz-api.ahmedzaripov43.workers.dev/api/:splat  200
+
+# Rasmlar — R2
+/public/*   https://pub-62fa3924c0d244a9b53387e7235cb0cb.r2.dev/public/:splat   200
+/uploads/*  https://pub-62fa3924c0d244a9b53387e7235cb0cb.r2.dev/uploads/:splat  200
+
+# Eski PHP URL lar
+/reader.php    /reader.html  302
+/ranking.php   /ranking.html 302

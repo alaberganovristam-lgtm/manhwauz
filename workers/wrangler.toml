@@ -1,0 +1,24 @@
+# Cloudflare Workers konfiguratsiyasi
+# Hujjat: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "manhwauz-api"
+main = "api.js"
+compatibility_date = "2025-01-01"
+
+# ── KV Namespace ──────────────────────────────────────────────
+[[kv_namespaces]]
+binding  = "COMICS_KV"
+id       = "2f472544857345438eaf61f080356689"
+
+# ── R2 Bucket ─────────────────────────────────────────────────
+[[r2_buckets]]
+binding     = "R2_BUCKET"
+bucket_name = "manhwauz-data"
+
+# ── Environment variables ─────────────────────────────────────
+[vars]
+SITE_URL = "https://manhwauz.com"
+
+# ── Secrets (terminalda qo'shing, bu yerga YOZMANG!) ─────────
+# wrangler secret put ADMIN_SECRET
+# → Sizning bot server uchun maxfiy kalit kiriting

@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="uz" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>ManhwaUZ Admin</title>
+<meta name="theme-color" content="#913FE2">
+
+<!-- Telegram Mini App SDK — MUHIM -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<link rel="stylesheet" href="/admin/assets/style.css">
+<style>
+/* Telegram Mini App uchun moslashlar */
+:root {
+  --tg-bg: var(--tg-theme-bg-color, #13111A);
+  --tg-text: var(--tg-theme-text-color, #ffffff);
+  --tg-hint: var(--tg-theme-hint-color, rgba(255,255,255,0.5));
+  --tg-link: var(--tg-theme-link-color, #913FE2);
+  --tg-btn: var(--tg-theme-button-color, #913FE2);
+  --tg-btn-text: var(--tg-theme-button-text_color, #ffffff);
+  --tg-secondary: var(--tg-theme-secondary-bg-color, #1C1924);
+}
+* { box-sizing: border-box; margin: 0; padding: 0 }
+body {
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Loading screen */
+#mu-loading {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--tg-bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1rem;
+  color: rgba(255,255,255,.5);
+}
+.mu-spinner {
+  width: 40px; height: 40px;
+  border: 3px solid rgba(145,63,226,.2);
+  border-top-color: #913FE2;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg) } }
+
+/* Layout */
+.admin-wrap { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 220px; min-height: 100vh;
+  background: var(--tg-secondary);
+  border-right: 1px solid rgba(255,255,255,.08);
+  display: flex; flex-direction: column;
+  position: fixed; left: 0; top: 0; bottom: 0; z-index: 100;
+  transform: translateX(-100%);
+  transition: transform .25s ease;
+}
+.sidebar.open { transform: translateX(0); }
+@media(min-width: 768px) {
+  .sidebar { transform: translateX(0); position: sticky; }
+  .main-content { margin-left: 220px; }
+}
+.sidebar-header {
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  font-weight: 700; font-size: 1.1rem; color: #913FE2;
+}
+.sidebar-nav { flex: 1; padding: .75rem 0; }
+.nav-item {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .625rem 1rem; cursor: pointer;
+  color: rgba(255,255,255,.6); font-size: .9rem;
+  transition: all .15s; border-radius: 0;
+  text-decoration: none;
+}
+.nav-item:hover { background: rgba(255,255,255,.05); color: #fff; }
+.nav-item.active { background: rgba(145,63,226,.15); color: #913FE2; }
+
+/* Top bar */
+.topbar {
+  height: 3.5rem; background: var(--tg-secondary);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center;
+  padding: 0 1rem; gap: .75rem;
+  position: sticky; top: 0; z-index: 50;
+}
+.menu-btn {
+  background: none; border: none; color: #fff; cursor: pointer;
+  padding: .25rem; border-radius: .375rem;
+  display: flex; align-items: center; justify-content: center;
+}
+@media(min-width: 768px) { .menu-btn { display: none; } }
+.topbar-title { font-weight: 600; font-size: 1rem; flex: 1; }
+
+/* Content pages */
+.page { display: none; padding: 1.25rem; }
+.page.active { display: block; }
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: .75rem; margin-bottom: 1.5rem;
+}
+.stat-card {
+  background: var(--tg-secondary);
+  border-radius: .875rem; padding: 1rem;
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.stat-icon {
+  width: 40px; height: 40px; border-radius: .625rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.stat-value { font-size: 1.5rem; font-weight: 700; }
+.stat-label { font-size: .75rem; color: rgba(255,255,255,.5); }
+
+/* Section headers */
+.section-title {
+  font-size: 1.1rem; font-weight: 700;
+  margin-bottom: 1rem;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* Comics list */
+.comic-item {
+  background: var(--tg-secondary);
+  border-radius: .75rem; padding: .875rem;
+  display: flex; align-items: center; gap: .875rem;
+  margin-bottom: .625rem; cursor: pointer;
+  transition: background .15s;
+}
+.comic-item:hover { background: rgba(255,255,255,.08); }
+.comic-cover {
+  width: 48px; height: 64px; object-fit: cover;
+  border-radius: .375rem; flex-shrink: 0; background: #1D1B22;
+}
+.comic-info { flex: 1; min-width: 0; }
+.comic-title { font-weight: 600; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.comic-meta { font-size: .75rem; color: rgba(255,255,255,.5); margin-top: .2rem; }
+.comic-actions { display: flex; gap: .375rem; flex-shrink: 0; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: .375rem;
+  padding: .5rem 1rem; border-radius: .5rem; font-size: .875rem;
+  font-weight: 500; cursor: pointer; border: none; transition: all .15s;
+}
+.btn-primary { background: #913FE2; color: #fff; }
+.btn-primary:hover { background: #7c35c2; }
+.btn-secondary { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.15); }
+.btn-secondary:hover { background: rgba(255,255,255,.15); }
+.btn-danger { background: rgba(239,68,68,.15); color: #ef4444; border: 1px solid rgba(239,68,68,.3); }
+.btn-danger:hover { background: rgba(239,68,68,.25); }
+.btn-sm { padding: .3rem .625rem; font-size: .75rem; }
+
+/* Forms */
+.form-group { margin-bottom: 1rem; }
+.form-label { display: block; font-size: .8rem; color: rgba(255,255,255,.6); margin-bottom: .375rem; }
+.form-input, .form-select, .form-textarea {
+  width: 100%; background: var(--tg-secondary);
+  border: 1px solid rgba(255,255,255,.12); border-radius: .5rem;
+  color: #fff; font-size: .875rem; outline: none;
+  padding: .625rem .875rem;
+  transition: border-color .15s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: #913FE2;
+}
+.form-textarea { resize: vertical; min-height: 90px; }
+.form-select option { background: #1C1924; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  z-index: 200; display: none;
+  align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: #1C1924; border-radius: 1rem 1rem 0 0;
+  width: 100%; max-height: 90vh; overflow-y: auto;
+  padding: 1.25rem;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.modal-title { font-size: 1.1rem; font-weight: 700; }
+.modal-close {
+  background: none; border: none; color: rgba(255,255,255,.5);
+  cursor: pointer; padding: .25rem; font-size: 1.25rem;
+}
+
+/* Flash messages */
+.flash {
+  padding: .75rem 1rem; border-radius: .5rem; margin-bottom: 1rem;
+  font-size: .875rem; font-weight: 500;
+}
+.flash-success { background: rgba(34,197,94,.15); color: #22c55e; border: 1px solid rgba(34,197,94,.3); }
+.flash-error   { background: rgba(239,68,68,.15);  color: #ef4444; border: 1px solid rgba(239,68,68,.3); }
+
+/* Upload zone */
+.upload-zone {
+  border: 2px dashed rgba(255,255,255,.2); border-radius: .75rem;
+  padding: 2rem; text-align: center; cursor: pointer;
+  transition: all .15s; color: rgba(255,255,255,.5);
+}
+.upload-zone:hover, .upload-zone.drag { border-color: #913FE2; color: #913FE2; background: rgba(145,63,226,.05); }
+.upload-preview { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+.upload-thumb { width: 60px; height: 80px; object-fit: cover; border-radius: .375rem; }
+
+/* Overlay when sidebar open (mobile) */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; z-index: 99;
+  background: rgba(0,0,0,.5);
+}
+.sidebar-overlay.open { display: block; }
+
+/* Progress */
+.progress-bar {
+  height: 4px; background: rgba(255,255,255,.1);
+  border-radius: 2px; overflow: hidden; margin: .5rem 0;
+}
+.progress-fill {
+  height: 100%; background: #913FE2;
+  transition: width .3s ease;
+}
+</style>
+</head>
+<body>
+<div id="mu-loading">
+  <div class="mu-spinner"></div>
+  <span>Yuklanmoqda...</span>
+</div>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<div class="admin-wrap">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">🎛 ManhwaUZ</div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-page="dashboard">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item" data-page="comics">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        Komiklar
+      </a>
+      <a class="nav-item" data-page="add-comic">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        Komiks Qo'shish
+      </a>
+      <a class="nav-item" data-page="chapters">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Bob Yuklash
+      </a>
+    </nav>
+    <div style="padding:1rem;border-top:1px solid rgba(255,255,255,.08)">
+      <div id="tg-user" style="font-size:.8rem;color:rgba(255,255,255,.5)">Yuklanmoqda...</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content" style="flex:1;min-width:0">
+    <!-- Top bar -->
+    <div class="topbar">
+      <button class="menu-btn" id="menu-btn">
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <span class="topbar-title" id="page-title">Dashboard</span>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div id="flash-dash"></div>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-value" id="stat-comics">—</div><div class="stat-label">Komiklar</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-chapters">—</div><div class="stat-label">Boblar</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-genres">—</div><div class="stat-label">Janrlar</div></div>
+      </div>
+      <div class="section-title">So'nggi komiklar</div>
+      <div id="recent-comics"></div>
+    </div>
+
+    <!-- KOMIKLAR RO'YXATI -->
+    <div class="page" id="page-comics">
+      <div id="flash-comics"></div>
+      <div class="section-title">
+        Komiklar
+        <button class="btn btn-primary btn-sm" onclick="showPage('add-comic')">+ Qo'shish</button>
+      </div>
+      <input type="text" class="form-input" id="comics-search" placeholder="Qidirish..." style="margin-bottom:1rem">
+      <div id="comics-list"></div>
+    </div>
+
+    <!-- KOMIKS QO'SHISH / TAHRIRLASH -->
+    <div class="page" id="page-add-comic">
+      <div id="flash-add"></div>
+      <div class="section-title">
+        <span id="add-comic-title">Yangi Komiks</span>
+        <button class="btn btn-secondary btn-sm" onclick="showPage('comics')">← Orqaga</button>
+      </div>
+      <form id="comic-form">
+        <input type="hidden" id="edit-slug">
+        <div class="form-group">
+          <label class="form-label">Sarlavha *</label>
+          <input type="text" class="form-input" id="cf-title" required placeholder="Solo Farming in the Tower">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Slug (URL)</label>
+          <input type="text" class="form-input" id="cf-slug" placeholder="solo-farming-in-the-tower">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+          <div class="form-group">
+            <label class="form-label">Muallif</label>
+            <input type="text" class="form-input" id="cf-author">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rassom</label>
+            <input type="text" class="form-input" id="cf-artist">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="cf-status">
+              <option value="Ongoing">Davom etmoqda</option>
+              <option value="Completed">Tugallangan</option>
+              <option value="Hiatus">To'xtatilgan</option>
+              <option value="Dropped">Bekor qilingan</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tur</label>
+            <select class="form-select" id="cf-type">
+              <option value="Manhwa">Manhwa</option>
+              <option value="Manga">Manga</option>
+              <option value="Manhua">Manhua</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reyting (0–10)</label>
+            <input type="number" class="form-input" id="cf-rating" step="0.1" min="0" max="10">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Yil</label>
+            <input type="number" class="form-input" id="cf-year" placeholder="2024">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Janrlar (vergul bilan)</label>
+          <input type="text" class="form-input" id="cf-genres" placeholder="Action, Fantasy, Romance">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tavsif</label>
+          <textarea class="form-textarea" id="cf-desc" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cover rasm</label>
+          <div class="upload-zone" id="cover-zone">
+            <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="margin:0 auto .5rem"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <p>Rasmni bu yerga tashlang yoki bosing</p>
+            <input type="file" id="cover-file" accept="image/*" style="display:none">
+          </div>
+          <img id="cover-preview" style="display:none;width:100px;height:133px;object-fit:cover;border-radius:.5rem;margin-top:.5rem">
+          <input type="hidden" id="cf-cover">
+        </div>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+          <button type="submit" class="btn btn-primary" id="save-comic-btn">Saqlash</button>
+          <button type="button" class="btn btn-secondary" onclick="resetComicForm()">Tozalash</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- BOB YUKLASH -->
+    <div class="page" id="page-chapters">
+      <div id="flash-ch"></div>
+      <div class="section-title">Bob Yuklash</div>
+      <div class="form-group">
+        <label class="form-label">Komiks tanlang</label>
+        <select class="form-select" id="ch-comic-select">
+          <option value="">— Komiks tanlang —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bob raqami *</label>
+        <input type="number" class="form-input" id="ch-number" placeholder="1" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bob nomi (ixtiyoriy)</label>
+        <input type="text" class="form-input" id="ch-title" placeholder="The Beginning">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rasmlar</label>
+        <div class="upload-zone" id="images-zone">
+          <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="margin:0 auto .5rem"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          <p>Rasmlarni tanlang (ko'p fayl)</p>
+          <small style="opacity:.6">JPG, PNG, WebP — max 15MB/fayl</small>
+          <input type="file" id="images-file" accept="image/*" multiple style="display:none">
+        </div>
+        <div class="upload-preview" id="images-preview"></div>
+        <div id="upload-progress" style="display:none">
+          <div style="font-size:.8rem;color:rgba(255,255,255,.6);margin-top:.5rem">
+            <span id="up-status">Yuklanmoqda...</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="up-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="upload-ch-btn">Bob Yuklash</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────
+const tg      = window.Telegram?.WebApp;
+const BOT_API = '__RAILWAY_URL__'; // Railway deploy dan keyin o'zgartiring
+// Masalan: 'https://manhwauz-bot.railway.app'
+// Bu qiymatni deploy vaqtida o'zgartiring
+
+const CDN     = 'https://pub-62fa3924c0d244a9b53387e7235cb0cb.r2.dev';
+// Masalan: 'https://pub-XXXX.r2.dev'
+
+// ── Telegram WebApp init ──────────────────────────────────────
+if (tg) {
+  tg.ready();
+  tg.expand();
+}
+
+// initData — autentifikatsiya uchun
+const INIT_DATA = tg?.initData || '';
+
+// ── API helper ────────────────────────────────────────────────
+async function api(endpoint, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: {
+      'Content-Type':           'application/json',
+      'X-Telegram-Init-Data':   INIT_DATA,
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(`${BOT_API}/mini-api${endpoint}`, opts);
+  return r.json();
+}
+
+async function uploadFile(endpoint, formData) {
+  const r = await fetch(`${BOT_API}${endpoint}`, {
+    method: 'POST',
+    headers: { 'X-Telegram-Init-Data': INIT_DATA },
+    body: formData,
+  });
+  return r.json();
+}
+
+// ── Flash messages ────────────────────────────────────────────
+function flash(containerId, msg, type = 'success') {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = `<div class="flash flash-${type}">${msg}</div>`;
+  setTimeout(() => { el.innerHTML = ''; }, 4000);
+}
+
+// ── Navigation ────────────────────────────────────────────────
+const pageTitles = {
+  dashboard:   'Dashboard',
+  comics:      'Komiklar',
+  'add-comic': 'Yangi Komiks',
+  chapters:    'Bob Yuklash',
+};
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById('page-' + name);
+  if (page) page.classList.add('active');
+  const navItem = document.querySelector(`[data-page="${name}"]`);
+  if (navItem) navItem.classList.add('active');
+  document.getElementById('page-title').textContent = pageTitles[name] || name;
+  closeSidebar();
+}
+
+// Sidebar toggle
+document.getElementById('menu-btn').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+});
+document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => showPage(item.dataset.page));
+});
+
+// ── Data loading ──────────────────────────────────────────────
+let allComics = [];
+
+async function loadStats() {
+  try {
+    const stats = await api('/api/stats');
+    document.getElementById('stat-comics').textContent   = stats.comics   || 0;
+    document.getElementById('stat-chapters').textContent = stats.chapters || 0;
+    document.getElementById('stat-genres').textContent   = stats.genres   || 0;
+  } catch(e) { console.error('Stats xato:', e); }
+}
+
+async function loadComics() {
+  try {
+    const comics = await api('/api/comics.json');
+    allComics = comics;
+    renderComicsList(comics);
+    renderRecentComics(comics.slice(0, 5));
+    fillComicSelect(comics);
+  } catch(e) { console.error('Comics xato:', e); }
+}
+
+function cdnImg(src) {
+  if (!src) return '';
+  if (src.startsWith('http')) return src;
+  return CDN + src;
+}
+
+function hd(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderComicsList(comics) {
+  document.getElementById('comics-list').innerHTML = comics.map(c => `
+    <div class="comic-item">
+      <img class="comic-cover" src="${hd(cdnImg(c.cover))}" onerror="this.style.background='#1D1B22'" alt="">
+      <div class="comic-info">
+        <div class="comic-title">${hd(c.title)}</div>
+        <div class="comic-meta">${c.chapters?.length||0} bob · ${hd(c.status||'')}</div>
+      </div>
+      <div class="comic-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editComic('${hd(c.slug)}')">✏️</button>
+        <button class="btn btn-secondary btn-sm" onclick="openChapterUpload('${hd(c.slug)}')">📖</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteComic('${hd(c.slug)}','${hd(c.title)}')">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderRecentComics(comics) {
+  document.getElementById('recent-comics').innerHTML = comics.map(c => `
+    <div class="comic-item">
+      <img class="comic-cover" src="${hd(cdnImg(c.cover))}" onerror="this.style.background='#1D1B22'" alt="">
+      <div class="comic-info">
+        <div class="comic-title">${hd(c.title)}</div>
+        <div class="comic-meta">${c.chapters?.length||0} bob · ${c.updatedAt||''}</div>
+      </div>
+    </div>`).join('');
+}
+
+function fillComicSelect(comics) {
+  const sel = document.getElementById('ch-comic-select');
+  sel.innerHTML = '<option value="">— Komiks tanlang —</option>' +
+    comics.map(c => `<option value="${hd(c.slug)}">${hd(c.title)}</option>`).join('');
+}
+
+// Comics search
+document.getElementById('comics-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase().trim();
+  renderComicsList(q ? allComics.filter(c => c.title.toLowerCase().includes(q) || c.slug.includes(q)) : allComics);
+});
+
+// ── Comic form ────────────────────────────────────────────────
+function resetComicForm() {
+  document.getElementById('comic-form').reset();
+  document.getElementById('edit-slug').value = '';
+  document.getElementById('add-comic-title').textContent = 'Yangi Komiks';
+  document.getElementById('cover-preview').style.display = 'none';
+  document.getElementById('cf-cover').value = '';
+}
+
+function editComic(slug) {
+  const c = allComics.find(x => x.slug === slug);
+  if (!c) return;
+  document.getElementById('edit-slug').value = slug;
+  document.getElementById('cf-title').value  = c.title || '';
+  document.getElementById('cf-slug').value   = c.slug || '';
+  document.getElementById('cf-author').value = c.author || '';
+  document.getElementById('cf-artist').value = c.illustrator || '';
+  document.getElementById('cf-status').value = c.status || 'Ongoing';
+  document.getElementById('cf-type').value   = c.type || 'Manhwa';
+  document.getElementById('cf-rating').value = c.rating || '';
+  document.getElementById('cf-year').value   = c.year || '';
+  document.getElementById('cf-genres').value = (c.genres||[]).join(', ');
+  document.getElementById('cf-desc').value   = c.description || '';
+  document.getElementById('cf-cover').value  = c.cover || '';
+  if (c.cover) {
+    const prev = document.getElementById('cover-preview');
+    prev.src = cdnImg(c.cover);
+    prev.style.display = 'block';
+  }
+  document.getElementById('add-comic-title').textContent = 'Tahrirlash: ' + c.title;
+  showPage('add-comic');
+}
+
+async function deleteComic(slug, title) {
+  if (!confirm(`"${title}" ni o'chirasizmi?`)) return;
+  try {
+    const r = await api(`/api/admin/comics/${slug}`, 'DELETE');
+    if (r.ok) {
+      flash('flash-comics', '✅ O\'chirildi');
+      loadComics();
+    } else {
+      flash('flash-comics', '❌ ' + (r.error || 'Xato'), 'error');
+    }
+  } catch(e) { flash('flash-comics', '❌ Xato: ' + e.message, 'error'); }
+}
+
+// Comic form submit
+document.getElementById('comic-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const editSlug = document.getElementById('edit-slug').value;
+  const isEdit   = !!editSlug;
+  const btn      = document.getElementById('save-comic-btn');
+  btn.disabled   = true; btn.textContent = 'Saqlanmoqda...';
+
+  const data = {
+    title:       document.getElementById('cf-title').value.trim(),
+    slug:        document.getElementById('cf-slug').value.trim() || null,
+    author:      document.getElementById('cf-author').value.trim(),
+    illustrator: document.getElementById('cf-artist').value.trim(),
+    status:      document.getElementById('cf-status').value,
+    type:        document.getElementById('cf-type').value,
+    rating:      parseFloat(document.getElementById('cf-rating').value) || 0,
+    year:        parseInt(document.getElementById('cf-year').value) || new Date().getFullYear(),
+    genres:      document.getElementById('cf-genres').value.split(',').map(s=>s.trim()).filter(Boolean),
+    description: document.getElementById('cf-desc').value.trim(),
+    cover:       document.getElementById('cf-cover').value || '',
+  };
+
+  // Cover yuklash
+  const coverFile = document.getElementById('cover-file').files[0];
+  if (coverFile && data.slug) {
+    const fd = new FormData();
+    fd.append('cover', coverFile);
+    fd.append('slug', data.slug || editSlug);
+    const uresp = await uploadFile('/mini-api-upload/cover', fd);
+    if (uresp.ok) data.cover = uresp.cover;
+  }
+
+  try {
+    let r;
+    if (isEdit) {
+      r = await api(`/api/admin/comics/${editSlug}`, 'PUT', data);
+    } else {
+      r = await api('/api/admin/comics', 'POST', data);
+    }
+    if (r.ok) {
+      flash('flash-add', '✅ Saqlandi!');
+      resetComicForm();
+      loadComics();
+      showPage('comics');
+    } else {
+      flash('flash-add', '❌ ' + (r.error || 'Xato'), 'error');
+    }
+  } catch(e) {
+    flash('flash-add', '❌ ' + e.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Saqlash';
+});
+
+// Auto slug generation
+document.getElementById('cf-title').addEventListener('input', function() {
+  if (!document.getElementById('edit-slug').value) {
+    document.getElementById('cf-slug').value = this.value.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
+  }
+});
+
+// Cover upload zone
+document.getElementById('cover-zone').addEventListener('click', () => document.getElementById('cover-file').click());
+document.getElementById('cover-file').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const prev = document.getElementById('cover-preview');
+    prev.src = ev.target.result;
+    prev.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+});
+
+// ── Chapter upload ────────────────────────────────────────────
+function openChapterUpload(slug) {
+  document.getElementById('ch-comic-select').value = slug;
+  showPage('chapters');
+}
+
+// Images zone
+document.getElementById('images-zone').addEventListener('click', () => document.getElementById('images-file').click());
+document.getElementById('images-file').addEventListener('change', (e) => {
+  const files = Array.from(e.target.files);
+  const prev  = document.getElementById('images-preview');
+  prev.innerHTML = '';
+  files.slice(0, 20).forEach(f => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = document.createElement('img');
+      img.src = ev.target.result; img.className = 'upload-thumb';
+      prev.appendChild(img);
+    };
+    reader.readAsDataURL(f);
+  });
+  if (files.length > 20) prev.insertAdjacentHTML('beforeend', `<span style="font-size:.75rem;color:rgba(255,255,255,.5);align-self:center">+${files.length-20} ta</span>`);
+});
+
+// Upload chapters
+document.getElementById('upload-ch-btn').addEventListener('click', async () => {
+  const slug    = document.getElementById('ch-comic-select').value;
+  const chapter = document.getElementById('ch-number').value;
+  const files   = document.getElementById('images-file').files;
+
+  if (!slug)    return flash('flash-ch', '❌ Komiks tanlang', 'error');
+  if (!chapter) return flash('flash-ch', '❌ Bob raqamini kiriting', 'error');
+  if (!files.length) return flash('flash-ch', '❌ Rasmlar tanlang', 'error');
+
+  const btn = document.getElementById('upload-ch-btn');
+  btn.disabled = true;
+
+  const BATCH = 20;
+  let totalUploaded = 0;
+  document.getElementById('upload-progress').style.display = 'block';
+
+  for (let i = 0; i < files.length; i += BATCH) {
+    const batch = Array.from(files).slice(i, i + BATCH);
+    const fd    = new FormData();
+    fd.append('slug',    slug);
+    fd.append('chapter', chapter);
+    fd.append('title',   document.getElementById('ch-title').value);
+    batch.forEach(f => fd.append('images', f));
+
+    const pct = Math.round(((i + batch.length) / files.length) * 100);
+    document.getElementById('up-status').textContent = `${i + batch.length} / ${files.length} rasm yuklanyapti...`;
+    document.getElementById('up-fill').style.width   = pct + '%';
+
+    try {
+      const r = await uploadFile('/mini-api-upload/chapter', fd);
+      totalUploaded += r.uploaded || 0;
+    } catch(e) { console.error('Batch xato:', e); }
+  }
+
+  document.getElementById('upload-progress').style.display = 'none';
+  flash('flash-ch', `✅ ${totalUploaded} ta rasm yuklandi!`);
+  document.getElementById('images-file').value = '';
+  document.getElementById('images-preview').innerHTML = '';
+  document.getElementById('ch-number').value  = '';
+  btn.disabled = false;
+  loadComics();
+});
+
+// ── Init ──────────────────────────────────────────────────────
+async function init() {
+  // Telegram foydalanuvchi
+  const user = tg?.initDataUnsafe?.user;
+  if (user) {
+    document.getElementById('tg-user').textContent =
+      `@${user.username || user.first_name} (ID: ${user.id})`;
+  }
+
+  await Promise.all([loadStats(), loadComics()]);
+  document.getElementById('mu-loading').style.display = 'none';
+}
+
+init().catch(e => {
+  document.getElementById('mu-loading').innerHTML =
+    `<div style="color:#ef4444;text-align:center;padding:2rem">
+      <p>❌ Yuklashda xato</p>
+      <small>${e.message}</small>
+      <br><br>
+      <button onclick="location.reload()" style="background:#913FE2;color:#fff;border:none;padding:.5rem 1rem;border-radius:.5rem;cursor:pointer">Qayta urinish</button>
+    </div>`;
+});
+</script>
+</body>
+</html>

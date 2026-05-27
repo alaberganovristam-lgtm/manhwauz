@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="uz" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seriyalar Reytingi — Manhwa UZ</title>
+<meta name="description" content="Manhwa UZ dagi eng yaxshi manhwa va manga seriyalari reytingi">
+<link rel="stylesheet" href="/_astro/_slug_.CvPJ_jpT.css">
+<link rel="manifest" href="/manifest.json">
+<style>
+body{background:#13111A;color:#fff;font-family:inherit;margin:0}
+.rk-wrap{max-width:900px;margin:0 auto;padding:2rem 1rem 4rem}
+.rk-title{font-size:1.75rem;font-weight:700;margin-bottom:1.5rem}
+.rk-tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.75rem}
+.rk-tab{padding:.45rem 1.1rem;border-radius:999px;font-size:.85rem;font-weight:600;text-decoration:none;border:1.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);transition:all .15s}
+.rk-tab:hover{border-color:#913FE2;color:#fff}
+.rk-tab.active{background:#913FE2;border-color:#913FE2;color:#fff}
+.rk-list{display:flex;flex-direction:column;gap:.75rem}
+.rk-row{display:flex;align-items:center;gap:1rem;background:#1C1924;border-radius:.875rem;padding:.75rem 1rem;text-decoration:none;color:inherit;transition:background .15s}
+.rk-row:hover{background:#25222f}
+.rk-rank{font-size:1.25rem;font-weight:800;width:2.25rem;text-align:center;flex-shrink:0;color:rgba(255,255,255,.35)}
+.rk-rank.top3{color:#913FE2;font-size:1.5rem}
+.rk-cover{width:3.25rem;height:4.25rem;object-fit:cover;border-radius:.5rem;flex-shrink:0;background:#1D1B22}
+.rk-info{flex:1;min-width:0}
+.rk-name{font-weight:600;font-size:.9375rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.rk-meta{font-size:.78rem;color:rgba(255,255,255,.45);margin-top:.2rem}
+.rk-stat{text-align:right;flex-shrink:0}
+.rk-val{font-size:1.1rem;font-weight:700;color:#913FE2}
+.rk-lbl{font-size:.7rem;color:rgba(255,255,255,.4)}
+.medal-1{color:#FFD700}.medal-2{color:#C0C0C0}.medal-3{color:#CD7F32}
+.r-load{display:flex;align-items:center;justify-content:center;min-height:50vh;gap:1rem;color:rgba(255,255,255,.4)}
+.r-spinner{width:32px;height:32px;border:3px solid rgba(145,63,226,.2);border-top-color:#913FE2;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="mu-nav"></div>
+<main class="rk-wrap">
+  <h1 class="rk-title">Seriyalar Reytingi</h1>
+  <div class="rk-tabs" id="rk-tabs"></div>
+  <div class="rk-list" id="rk-list">
+    <div class="r-load"><div class="r-spinner"></div></div>
+  </div>
+</main>
+<div id="mu-footer"></div>
+
+<script src="/_fix.js?v=1"></script>
+<script type="module">
+const API = window.MU_API || '';
+const CDN = window.MU_CDN || '';
+
+const tabs = {
+  rating:   'Reyting',
+  views:    "Ko'rishlar",
+  chapters: 'Boblar soni',
+  updated:  'Yangilangan'
+};
+
+function getBy() {
+  return new URLSearchParams(location.search).get('by') || 'rating';
+}
+
+function cdnImg(src) {
+  if (!src) return '/public/images/placeholder.webp';
+  if (src.startsWith('http')) return src;
+  return CDN + src;
+}
+
+function hd(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function fmtNum(n) {
+  n = parseInt(n)||0;
+  if (n>=1000000) return (n/1000000).toFixed(1)+'M';
+  if (n>=1000) return (n/1000).toFixed(1)+'K';
+  return n;
+}
+
+// Nav/footer yuklash
+async function loadNavFooter() {
+  try {
+    const r = await fetch('/nav_template.html');
+    const html = await r.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html,'text/html');
+    const header = doc.querySelector('header');
+    const footer = doc.querySelector('footer');
+    doc.querySelectorAll('style').forEach(s=>document.head.appendChild(s.cloneNode(true)));
+    if (header) document.getElementById('mu-nav').innerHTML = header.outerHTML;
+    if (footer) document.getElementById('mu-footer').innerHTML = footer.outerHTML;
+  } catch(e){}
+}
+
+async function render() {
+  const by = getBy();
+
+  // Tabs
+  document.getElementById('rk-tabs').innerHTML = Object.entries(tabs).map(([key,label])=>
+    `<a href="/ranking?by=${key}" class="rk-tab${by===key?' active':''}">${label}</a>`
+  ).join('');
+
+  let comics = [];
+  try {
+    const r = await fetch(`${API}/api/comics.json`);
+    comics = await r.json();
+  } catch(e) {}
+
+  // Sort
+  comics.sort((a,b) => {
+    if (by==='rating')   return (parseFloat(b.rating)||0)-(parseFloat(a.rating)||0);
+    if (by==='views')    return (parseInt(b.viewCount)||0)-(parseInt(a.viewCount)||0);
+    if (by==='chapters') return (b.chapters?.length||0)-(a.chapters?.length||0);
+    if (by==='updated')  return (b.lastUpdated||'').localeCompare(a.lastUpdated||'');
+    return 0;
+  });
+
+  const statusUz = {Ongoing:"Davom etmoqda",Completed:"Tugallangan",Hiatus:"To'xtatilgan",Dropped:"Bekor qilingan"};
+
+  document.getElementById('rk-list').innerHTML = comics.map((c,i) => {
+    const rank = i+1;
+    const chCnt = c.chapters?.length || 0;
+    const medalCls = rank===1?' medal-1':rank===2?' medal-2':rank===3?' medal-3':'';
+    let statVal='', statLbl='';
+    if (by==='rating')   { statVal=(parseFloat(c.rating)||0).toFixed(1); statLbl='Reyting'; }
+    if (by==='views')    { statVal=fmtNum(c.viewCount||0); statLbl="Ko'rishlar"; }
+    if (by==='chapters') { statVal=chCnt; statLbl='Bob'; }
+    if (by==='updated')  { statVal=(c.lastUpdated||'').slice(0,10); statLbl='Sana'; }
+    return `
+    <a href="/comics/${hd(c.slug)}" class="rk-row">
+      <div class="rk-rank${rank<=3?' top3':''}${medalCls}">${rank}</div>
+      <img class="rk-cover" src="${hd(cdnImg(c.cover))}" alt="${hd(c.title)}" loading="lazy" onerror="this.style.background='#1D1B22'">
+      <div class="rk-info">
+        <div class="rk-name">${hd(c.title)}</div>
+        <div class="rk-meta">${hd(c.author||'')}${c.author?' · ':''}${hd(statusUz[c.status]||c.status||'')} · ${chCnt} bob</div>
+      </div>
+      <div class="rk-stat">
+        <div class="rk-val">${hd(String(statVal))}</div>
+        <div class="rk-lbl">${statLbl}</div>
+      </div>
+    </a>`;
+  }).join('');
+}
+
+loadNavFooter();
+render();
+</script>
+</body>
+</html>

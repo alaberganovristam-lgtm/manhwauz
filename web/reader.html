@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reader | Manhwa UZ</title>
+<meta name="theme-color" content="#913FE2">
+<link rel="stylesheet" href="/_astro/_slug_.CvPJ_jpT.css">
+<link rel="manifest" href="/manifest.json">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#13111A;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;display:flex;flex-direction:column}
+a{color:inherit;text-decoration:none}
+.r-nav{background:#1D1B22;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;z-index:50}
+.r-nav-in{max-width:1285px;margin:0 auto;padding:.6rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap}
+.r-bread{display:flex;align-items:center;gap:.4rem;font-size:.875rem;min-width:0;overflow:hidden}
+.r-bread a{color:rgba(255,255,255,.5)}.r-bread a:hover{color:#fff}
+.r-bread span{color:rgba(255,255,255,.3)}
+.r-ctrls{display:flex;align-items:center;gap:.4rem;flex-shrink:0}
+.r-btn{display:inline-flex;align-items:center;gap:.25rem;padding:.4rem .75rem;border-radius:.5rem;font-size:.8rem;font-weight:500;background:rgba(255,255,255,.06);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.1);transition:background .15s,color .15s;cursor:pointer}
+.r-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+.r-btn.prim{background:#913FE2;color:#fff;border-color:#913FE2}
+.r-btn.prim:hover{background:#7c35c2}
+select.r-sel{background:#13111A;border:1px solid rgba(255,255,255,.1);border-radius:.5rem;padding:.4rem .6rem;color:#fff;font-size:.8rem;outline:none;cursor:pointer;max-width:170px}
+.r-content{flex:1;background:#0D0B0E}
+.r-imgs{max-width:800px;margin:0 auto}
+.r-imgs img{width:100%;display:block}
+.r-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5rem 1rem;text-align:center;min-height:50vh}
+.r-empty h2{font-size:1.25rem;font-weight:600;margin:.75rem 0 .5rem}
+.r-empty p{color:rgba(255,255,255,.5);font-size:.875rem;max-width:400px}
+.r-btns{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-top:1.5rem}
+.r-foot{background:#1D1B22;border-top:1px solid rgba(255,255,255,.08)}
+.r-foot-in{max-width:1285px;margin:0 auto;padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap}
+.r-load{display:flex;align-items:center;justify-content:center;min-height:60vh;gap:1rem;color:rgba(255,255,255,.4)}
+.r-spinner{width:36px;height:36px;border:3px solid rgba(145,63,226,.2);border-top-color:#913FE2;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+svg.ic{width:1rem;height:1rem;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div id="r-nav-top">
+  <div class="r-load"><div class="r-spinner"></div></div>
+</div>
+
+<div class="r-content" id="r-content">
+  <div class="r-load"><div class="r-spinner"></div></div>
+</div>
+
+<div class="r-foot" id="r-foot" style="display:none">
+  <div class="r-foot-in" id="r-foot-in"></div>
+</div>
+
+<script src="/_fix.js?v=1"></script>
+<script type="module">
+const API = window.MU_API || '';
+const CDN = window.MU_CDN || '';
+
+// URL: /reader/SLUG/CHAPTER
+const parts = location.pathname.replace(/^\/reader\//, '').split('/');
+const slug  = parts[0];
+const chNum = parseInt(parts[1]);
+
+if (!slug || isNaN(chNum)) { location.href = '/'; }
+
+function cdnImg(src) {
+  if (!src) return '';
+  if (src.startsWith('http')) return src;
+  return CDN + src;
+}
+function hd(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+async function init() {
+  let comic;
+  try {
+    const r = await fetch(`${API}/api/comics/${slug}`);
+    if (!r.ok) throw new Error();
+    comic = await r.json();
+  } catch(e) {
+    document.getElementById('r-content').innerHTML = `
+      <div class="r-empty">
+        <h2>Komiks topilmadi</h2>
+        <p>Slug: ${hd(slug)}</p>
+        <div class="r-btns"><a href="/" class="r-btn">← Bosh sahifa</a></div>
+      </div>`;
+    return;
+  }
+
+  const chapters = (comic.chapters || []).sort((a,b) => b.number - a.number);
+  const chIdx    = chapters.findIndex(c => c.number === chNum);
+  const prevCh   = chIdx >= 0 && chIdx + 1 < chapters.length ? chapters[chIdx + 1].number : null;
+  const nextCh   = chIdx > 0 ? chapters[chIdx - 1].number : null;
+  const title    = hd(comic.title || slug);
+
+  function navUrl(n) { return `/reader/${slug}/${n}`; }
+
+  // Nav
+  document.getElementById('r-nav-top').innerHTML = `
+    <nav class="r-nav">
+      <div class="r-nav-in">
+        <div class="r-bread">
+          <a href="/">🏠</a>
+          <span>›</span>
+          <a href="/comics/${hd(slug)}">${title}</a>
+          <span>›</span>
+          <span>Ch.${chNum}</span>
+        </div>
+        <div class="r-ctrls">
+          ${prevCh !== null ? `<a href="${navUrl(prevCh)}" class="r-btn"><svg class="ic" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>Prev</a>` : ''}
+          <select class="r-sel" id="ch-select">
+            ${chapters.map(ch=>`<option value="${navUrl(ch.number)}"${ch.number===chNum?' selected':''}>Chapter ${ch.number}</option>`).join('')}
+          </select>
+          ${nextCh !== null ? `<a href="${navUrl(nextCh)}" class="r-btn prim">Next<svg class="ic" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a>` : ''}
+        </div>
+      </div>
+    </nav>`;
+
+  document.getElementById('ch-select')?.addEventListener('change', e => { location.href = e.target.value; });
+
+  // Images — Workers dan olamiz
+  let images = [];
+  try {
+    const r2 = await fetch(`${API}/api/chapter-images/${slug}/${chNum}`);
+    if (r2.ok) images = await r2.json();
+  } catch(e) {}
+
+  // Footer
+  const foot = document.getElementById('r-foot');
+  document.getElementById('r-foot-in').innerHTML = `
+    <a href="/comics/${hd(slug)}" class="r-btn"><svg class="ic" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>Comic Page</a>
+    <div style="display:flex;gap:.5rem">
+      ${prevCh !== null ? `<a href="${navUrl(prevCh)}" class="r-btn">← Previous</a>` : ''}
+      ${nextCh !== null ? `<a href="${navUrl(nextCh)}" class="r-btn prim">Next →</a>` : ''}
+    </div>`;
+  foot.style.display = '';
+
+  document.title = `${comic.title} — Chapter ${chNum} | Manhwa UZ`;
+
+  // Content
+  if (!images.length) {
+    document.getElementById('r-content').innerHTML = `
+      <div class="r-empty">
+        <div style="width:80px;height:80px;border-radius:50%;background:#1D1B22;display:flex;align-items:center;justify-content:center">
+          <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,.3)" stroke-width="1.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </div>
+        <h2>Rasmlar mavjud emas</h2>
+        <p>Chapter ${chNum} rasmlar admin panel orqali yuklanishi kerak</p>
+        <div class="r-btns">
+          <a href="/comics/${hd(slug)}" class="r-btn">← Comic Page</a>
+          ${nextCh !== null ? `<a href="${navUrl(nextCh)}" class="r-btn prim">Next Chapter →</a>` : ''}
+        </div>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('r-content').innerHTML = `
+    <div class="r-imgs">
+      ${images.map(src=>`<img src="${hd(cdnImg(src))}" alt="${title} Ch.${chNum}" loading="lazy" onerror="this.style.display='none'">`).join('')}
+    </div>`;
+
+  window.scrollTo(0,0);
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', async (e) => {
+  if (!window._navReady) return;
+  if (e.key === 'ArrowLeft'  && window._prevCh !== null) location.href = `/reader/${slug}/${window._prevCh}`;
+  if (e.key === 'ArrowRight' && window._nextCh !== null) location.href = `/reader/${slug}/${window._nextCh}`;
+});
+
+init();
+</script>
+</body>
+</html>
